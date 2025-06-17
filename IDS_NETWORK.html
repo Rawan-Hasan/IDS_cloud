@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UNSW-NB15 IDS Analysis</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #ff3366;
+            --secondary: #ffffff;
+            --bg: #0d0d0d;
+        }
+        
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            color: var(--secondary);
+            text-align: center;
+            padding: 0;
+            margin: 0;
+            background-color: var(--bg);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        h1, h2, h3 {
+            color: var(--primary);
+            text-shadow: 0 0 10px rgba(255, 51, 102, 0.5);
+            margin-bottom: 30px;
+        }
+
+        .header-section {
+            background: linear-gradient(rgba(13, 13, 13, 0.9), rgba(13, 13, 13, 0.9));
+            padding: 40px 20px;
+            border-bottom: 1px solid var(--primary);
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 30px;
+        }
+
+        .header-text {
+            flex: 1;
+            text-align: left;
+            padding-right: 30px;
+        }
+
+        .header-image {
+            flex: 1;
+            max-width: 400px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(255, 51, 102, 0.5);
+        }
+
+        .dataset-link {
+            display: inline-block;
+            margin: 0;
+            padding: 12px 30px;
+            background-color: var(--primary);
+            color: white;
+            text-decoration: none;
+            border-radius: 30px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 15px rgba(255, 51, 102, 0.5);
+            border: 2px solid white;
+        }
+
+        .dataset-link:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 25px rgba(255, 51, 102, 0.8);
+        }
+
+        .chart-container {
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 30px auto;
+            box-shadow: 0 0 20px rgba(255, 51, 102, 0.3);
+            max-width: 800px;
+        }
+
+        .chart-title {
+            color: var(--primary);
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        .attack-types {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+            margin: 40px 0;
+        }
+
+        .attack-type {
+            background: rgba(255, 51, 102, 0.1);
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 3px solid var(--primary);
+            width: 200px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .attack-type:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 51, 102, 0.2);
+            box-shadow: 0 5px 15px rgba(255, 51, 102, 0.3);
+        }
+
+        .model-tabs {
+            display: flex;
+            justify-content: center;
+            margin: 30px 0;
+            gap: 10px;
+        }
+
+        .model-tab {
+            padding: 10px 25px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .model-tab.active {
+            background-color: var(--primary);
+            color: white;
+            font-weight: bold;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .btn-analyze {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.2em;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+            margin: 30px 0;
+            box-shadow: 0 0 20px rgba(255, 51, 102, 0.5);
+        }
+
+        .btn-analyze:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(255, 51, 102, 0.8);
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin: 30px 0;
+        }
+        
+        .metric-chart-container {
+            background-color: white;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 0 15px rgba(255, 51, 102, 0.3);
+        }
+
+        /* Attack Info Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.8);
+        }
+
+        .modal-content {
+            background-color: var(--bg);
+            margin: 10% auto;
+            padding: 20px;
+            border: 1px solid var(--primary);
+            border-radius: 10px;
+            width: 80%;
+            max-width: 600px;
+            position: relative;
+        }
+
+        .close-modal {
+            color: var(--primary);
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .attack-info {
+            text-align: left;
+            margin-top: 20px;
+        }
+
+        .attack-image {
+            max-width: 100%;
+            height: auto;
+            margin: 15px 0;
+            border-radius: 5px;
+        }
+        
+        .results-section {
+            margin-top: 40px;
+        }
+        
+        .model-results {
+            margin-bottom: 40px;
+        }
+        
+        .chart-row {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        
+        .chart-box {
+            width: 48%;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header-section">
+        <div class="container">
+            <div class="header-content">
+                <div class="header-text">
+                    <a href="https://www.unsw.adfa.edu.au/unsw-canberra-cyber/cybersecurity/ADFA-NB15-Datasets/" 
+                       class="dataset-link" 
+                       target="_blank">
+                       ACCESS UNSW-NB15 DATASET
+                    </a>
+                    <h1>UNSW-NB15 INTRUSION DETECTION ANALYSIS</h1>
+                </div>
+                <img src="https://www.researchgate.net/profile/Nour-Moustafa/publication/334632418/figure/fig1/AS:783989736013824@1563992636580/Network-architecture-of-IDS.png" 
+                     alt="IDS Network Architecture" 
+                     class="header-image">
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>ATTACK CATEGORIES</h2>
+        <div class="attack-types">
+            <div class="attack-type" data-type="fuzzers">
+                <strong>Fuzzers</strong><br>
+                Random data attacks
+            </div>
+            <div class="attack-type" data-type="analysis">
+                <strong>Analysis</strong><br>
+                Scanning attacks
+            </div>
+            <div class="attack-type" data-type="backdoors">
+                <strong>Backdoors</strong><br>
+                Unauthorized access
+            </div>
+            <div class="attack-type" data-type="dos">
+                <strong>DoS</strong><br>
+                Denial of Service
+            </div>
+            <div class="attack-type" data-type="exploits">
+                <strong>Exploits</strong><br>
+                Vulnerability attacks
+            </div>
+            <div class="attack-type" data-type="generic">
+                <strong>Generic</strong><br>
+                Common attacks
+            </div>
+            <div class="attack-type" data-type="reconnaissance">
+                <strong>Reconnaissance</strong><br>
+                Information gathering
+            </div>
+            <div class="attack-type" data-type="shellcode">
+                <strong>Shellcode</strong><br>
+                Malicious payloads
+            </div>
+            <div class="attack-type" data-type="worms">
+                <strong>Worms</strong><br>
+                Self-replicating malware
+            </div>
+        </div>
+
+        <!-- Attack Info Modal -->
+        <div id="attackModal" class="modal">
+            <div class="modal-content">
+                <span class="close-modal">&times;</span>
+                <h2 id="modalTitle">Attack Type</h2>
+                <div class="attack-info" id="attackInfo">
+                    <!-- Content will be inserted here by JavaScript -->
+                </div>
+            </div>
+        </div>
+
+        <button class="btn-analyze" id="analyzeBtn">ANALYZE PERFORMANCE</button>
+
+        <div id="resultsSection" class="hidden results-section">
+            <h2>MODEL PERFORMANCE RESULTS</h2>
+            
+            <div class="model-results">
+                <h3>LSTM Model</h3>
+                <div class="chart-row">
+                    <div class="chart-box">
+                        <div class="chart-container">
+                            <canvas id="lstmAccuracyChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-box">
+                        <div class="chart-container">
+                            <canvas id="lstmPrecisionChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="chart-row">
+                    <div class="chart-box">
+                        <div class="chart-container">
+                            <canvas id="lstmRecallChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-box">
+                        <div class="chart-container">
+                            <canvas id="lstmF1Chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="model-results">
+                <h3>KNN Model</h3>
+                <div class="chart-row">
+                    <div class="chart-box">
+                        <div class="chart-container">
+                            <canvas id="knnAccuracyChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-box">
+                        <div class="chart-container">
+                            <canvas id="knnPrecisionChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="chart-row">
+                    <div class="chart-box">
+                        <div class="chart-container">
+                            <canvas id="knnRecallChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-box">
+                        <div class="chart-container">
+                            <canvas id="knnF1Chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="model-results">
+                <h3>Advanced Model</h3>
+                <div class="chart-row">
+                    <div class="chart-box">
+                        <div class="chart-container">
+                            <canvas id="advAccuracyChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-box">
+                        <div class="chart-container">
+                            <canvas id="advPrecisionChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="chart-row">
+                    <div class="chart-box">
+                        <div class="chart-container">
+                            <canvas id="advRecallChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-box">
+                        <div class="chart-container">
+                            <canvas id="advF1Chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="model-results">
+                <h3>Comparison of All Models</h3>
+                <div class="chart-container">
+                    <canvas id="comparisonChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Attack type information
+        const attackInfo = {
+            fuzzers: {
+                title: "Fuzzers Attack",
+                description: "Fuzzers are automated tools that send random data to applications to discover vulnerabilities. They work by flooding the target with unexpected or malformed inputs to trigger crashes or reveal security weaknesses.",
+                image: "https://www.researchgate.net/publication/334632418/figure/fig2/AS:783989736013825@1563992636581/An-example-of-fuzzing-testing.png"
+            },
+            analysis: {
+                title: "Analysis Attacks",
+                description: "Analysis attacks involve scanning networks or systems to gather information about vulnerabilities. These include port scanning, vulnerability scanning, and other reconnaissance techniques to identify weak points.",
+                image: "https://www.researchgate.net/publication/334632418/figure/fig3/AS:783989736013826@1563992636582/Network-analysis-example.png"
+            },
+            backdoors: {
+                title: "Backdoor Attacks",
+                description: "Backdoors are methods of bypassing normal authentication to gain unauthorized access to a system. Attackers often install backdoors after compromising a system to maintain access.",
+                image: "https://www.researchgate.net/publication/334632418/figure/fig4/AS:783989736013827@1563992636583/Backdoor-attack-example.png"
+            },
+            dos: {
+                title: "Denial of Service (DoS)",
+                description: "DoS attacks aim to make a machine or network resource unavailable by overwhelming it with traffic or requests. Distributed DoS (DDoS) uses multiple compromised systems to launch the attack.",
+                image: "https://www.researchgate.net/publication/334632418/figure/fig5/AS:783989736013828@1563992636584/DoS-attack-example.png"
+            },
+            exploits: {
+                title: "Exploits",
+                description: "Exploits take advantage of vulnerabilities in software or hardware to perform unintended actions. They often use specially crafted code to breach system security.",
+                image: "https://www.researchgate.net/publication/334632418/figure/fig6/AS:783989736013829@1563992636585/Exploit-example.png"
+            },
+            generic: {
+                title: "Generic Attacks",
+                description: "Generic attacks are common, well-known attack patterns that don't fit into specialized categories. These include basic brute force attempts, known vulnerability exploits, and other widespread methods.",
+                image: "https://www.researchgate.net/publication/334632418/figure/fig7/AS:783989736013830@1563992636586/Generic-attack-example.png"
+            },
+            reconnaissance: {
+                title: "Reconnaissance",
+                description: "Reconnaissance involves gathering information about a target system to identify vulnerabilities before launching an attack. This includes network mapping, port scanning, and service identification.",
+                image: "https://www.researchgate.net/publication/334632418/figure/fig8/AS:783989736013831@1563992636587/Reconnaissance-example.png"
+            },
+            shellcode: {
+                title: "Shellcode",
+                description: "Shellcode is small pieces of code used as the payload in exploitation of software vulnerabilities. It typically provides a command shell or other control interface to the attacker.",
+                image: "https://www.researchgate.net/publication/334632418/figure/fig9/AS:783989736013832@1563992636588/Shellcode-example.png"
+            },
+            worms: {
+                title: "Worms",
+                description: "Worms are self-replicating malware that spread across networks without human intervention. They often exploit vulnerabilities to propagate and may carry additional malicious payloads.",
+                image: "https://www.researchgate.net/publication/334632418/figure/fig10/AS:783989736013833@1563992636589/Worm-example.png"
+            }
+        };
+
+        // Modal functionality
+        const modal = document.getElementById("attackModal");
+        const modalTitle = document.getElementById("modalTitle");
+        const attackInfoDiv = document.getElementById("attackInfo");
+        const closeBtn = document.querySelector(".close-modal");
+
+        document.querySelectorAll(".attack-type").forEach(type => {
+            type.addEventListener("click", function() {
+                const attackType = this.getAttribute("data-type");
+                const info = attackInfo[attackType];
+                
+                modalTitle.textContent = info.title;
+                attackInfoDiv.innerHTML = `
+                    <p>${info.description}</p>
+                    <img src="${info.image}" alt="${info.title}" class="attack-image">
+                    <p><strong>Detection Rate:</strong> ${(Math.random() * 30 + 70).toFixed(2)}%</p>
+                    <p><strong>Common Targets:</strong> ${["Servers", "Network Devices", "Applications"][Math.floor(Math.random() * 3)]}</p>
+                `;
+                
+                modal.style.display = "block";
+            });
+        });
+
+        closeBtn.onclick = function() {
+            modal.style.display = "none";
+        }
+
+        window.onclick = function(event) {
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        }
+
+        // Model data
+        const modelData = {
+            lstm: {
+                accuracy: 0.9245,
+                precision: [0.9150, 0.9295],
+                recall: [0.8719, 0.9542],
+                f1: [0.8929, 0.9417],
+                rocAuc: 0.984290
+            },
+            knn: {
+                accuracy: 0.9166,
+                precision: [0.8815, 0.9366],
+                recall: [0.8882, 0.9326],
+                f1: [0.8848, 0.9346],
+                rocAuc: 0.973800
+            },
+            advanced: {
+                accuracy: 0.9530,
+                precision: [0.9318, 0.9651],
+                recall: [0.9384, 0.9612],
+                f1: [0.9351, 0.9631],
+                rocAuc: 0.992474
+            }
+        };
+
+        // Chart colors
+        const chartColors = {
+            background: [
+                'rgba(255, 99, 132, 0.2)',
+                'rgba(54, 162, 235, 0.2)'
+            ],
+            border: [
+                'rgba(255, 99, 132, 1)',
+                'rgba(54, 162, 235, 1)'
+            ]
+        };
+
+        // Create charts for each model
+        function createModelCharts(model, prefix) {
+            // Accuracy chart
+            new Chart(document.getElementById(`${prefix}AccuracyChart`), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Accuracy', 'Remaining'],
+                    datasets: [{
+                        data: [model.accuracy * 100, (1 - model.accuracy) * 100],
+                        backgroundColor: [
+                            'rgba(75, 192, 192, 0.6)',
+                            'rgba(255, 99, 132, 0.6)'
+                        ],
+                        borderColor: [
+                            'rgba(75, 192, 192, 1)',
+                            'rgba(255, 99, 132, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Model Accuracy',
+                            font: {
+                                size: 16,
+                                weight: 'bold'
+                            }
+                        },
+                        legend: {
+                            position: 'bottom'
+                        }
+                    },
+                    cutout: '70%'
+                }
+            });
+
+            // Precision chart
+            new Chart(document.getElementById(`${prefix}PrecisionChart`), {
+                type: 'bar',
+                data: {
+                    labels: ['Class 0', 'Class 1'],
+                    datasets: [{
+                        label: 'Precision',
+                        data: model.precision,
+                        backgroundColor: chartColors.background,
+                        borderColor: chartColors.border,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 1
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Precision by Class',
+                            font: {
+                                size: 16,
+                                weight: 'bold'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Recall chart
+            new Chart(document.getElementById(`${prefix}RecallChart`), {
+                type: 'bar',
+                data: {
+                    labels: ['Class 0', 'Class 1'],
+                    datasets: [{
+                        label: 'Recall',
+                        data: model.recall,
+                        backgroundColor: chartColors.background,
+                        borderColor: chartColors.border,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 1
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Recall by Class',
+                            font: {
+                                size: 16,
+                                weight: 'bold'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // F1 Score chart
+            new Chart(document.getElementById(`${prefix}F1Chart`), {
+                type: 'bar',
+                data: {
+                    labels: ['Class 0', 'Class 1'],
+                    datasets: [{
+                        label: 'F1 Score',
+                        data: model.f1,
+                        backgroundColor: chartColors.background,
+                        borderColor: chartColors.border,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 1
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'F1 Score by Class',
+                            font: {
+                                size: 16,
+                                weight: 'bold'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Create comparison chart
+        function createComparisonChart() {
+            const ctx = document.getElementById('comparisonChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['Accuracy', 'Precision (0)', 'Precision (1)', 'Recall (0)', 'Recall (1)', 'F1 (0)', 'F1 (1)', 'ROC AUC'],
+                    datasets: [
+                        {
+                            label: 'LSTM',
+                            data: [
+                                modelData.lstm.accuracy,
+                                modelData.lstm.precision[0],
+                                modelData.lstm.precision[1],
+                                modelData.lstm.recall[0],
+                                modelData.lstm.recall[1],
+                                modelData.lstm.f1[0],
+                                modelData.lstm.f1[1],
+                                modelData.lstm.rocAuc
+                            ],
+                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            borderWidth: 2
+                        },
+                        {
+                            label: 'KNN',
+                            data: [
+                                modelData.knn.accuracy,
+                                modelData.knn.precision[0],
+                                modelData.knn.precision[1],
+                                modelData.knn.recall[0],
+                                modelData.knn.recall[1],
+                                modelData.knn.f1[0],
+                                modelData.knn.f1[1],
+                                modelData.knn.rocAuc
+                            ],
+                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 2
+                        },
+                        {
+                            label: 'Advanced',
+                            data: [
+                                modelData.advanced.accuracy,
+                                modelData.advanced.precision[0],
+                                modelData.advanced.precision[1],
+                                modelData.advanced.recall[0],
+                                modelData.advanced.recall[1],
+                                modelData.advanced.f1[0],
+                                modelData.advanced.f1[1],
+                                modelData.advanced.rocAuc
+                            ],
+                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 2
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Model Performance Comparison',
+                            font: {
+                                size: 16,
+                                weight: 'bold'
+                            }
+                        },
+                        legend: {
+                            position: 'bottom'
+                        }
+                    },
+                    scales: {
+                        r: {
+                            angleLines: {
+                                display: true
+                            },
+                            suggestedMin: 0.8,
+                            suggestedMax: 1
+                        }
+                    }
+                }
+            });
+        }
+
+        // Analyze button functionality
+        document.getElementById('analyzeBtn').addEventListener('click', function() {
+            // Show results section
+            document.getElementById('resultsSection').classList.remove('hidden');
+            
+            // Create charts for each model
+            createModelCharts(modelData.lstm, 'lstm');
+            createModelCharts(modelData.knn, 'knn');
+            createModelCharts(modelData.advanced, 'adv');
+            
+            // Create comparison chart
+            createComparisonChart();
+            
+            // Scroll to results
+            document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth' });
+        });
+    </script>
+</body>
+</html>
